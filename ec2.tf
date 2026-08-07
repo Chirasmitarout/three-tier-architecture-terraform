@@ -16,12 +16,9 @@ data "aws_ami" "amazon_linux" {
 ############################################
 # Key Pair
 ############################################
-
-resource "aws_key_pair" "three_tier_key" {
-  key_name   = var.key_name
-  public_key = file(var.public_key_path)
+data "aws_key_pair" "server_key" {
+  key_name = "server-01"
 }
-
 ############################################
 # Public Security Group
 ############################################
@@ -106,7 +103,7 @@ resource "aws_instance" "public" {
   ami                    = data.aws_ami.amazon_linux.id
   instance_type          = var.instance_type
   subnet_id              = aws_subnet.public[0].id
-  key_name               = aws_key_pair.three_tier_key.key_name
+  key_name               = data.aws_key_pair.server_key.key_name
   vpc_security_group_ids = [aws_security_group.public_sg.id]
 
   associate_public_ip_address = true
@@ -141,7 +138,7 @@ resource "aws_instance" "private" {
   ami                    = data.aws_ami.amazon_linux.id
   instance_type          = var.instance_type
   subnet_id              = aws_subnet.private_app[count.index].id
-  key_name               = aws_key_pair.three_tier_key.key_name
+  key_name               =  data.aws_key_pair.server_key.key_name
   vpc_security_group_ids = [aws_security_group.private_sg.id]
 
   associate_public_ip_address = false
