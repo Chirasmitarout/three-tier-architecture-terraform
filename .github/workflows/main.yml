@@ -2,25 +2,15 @@ name: Terraform Three Tier Deployment
 
 on:
 
-  push:
-    branches:
-      - main
-
-  pull_request:
-    branches:
-      - main
-
   workflow_dispatch:
 
     inputs:
 
       action:
 
-        description: Terraform action
+        description: "Choose Terraform Action"
 
         required: true
-
-        default: apply
 
         type: choice
 
@@ -30,7 +20,6 @@ on:
 
 
 permissions:
-
   contents: read
 
 
@@ -91,9 +80,7 @@ jobs:
 
 
       - name: Terraform Apply
-        if: |
-          github.event_name == 'push' ||
-          github.event.inputs.action == 'apply'
+        if: github.event.inputs.action == 'apply'
 
         run: terraform apply -auto-approve
 
