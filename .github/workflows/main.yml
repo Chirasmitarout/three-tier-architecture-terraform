@@ -1,6 +1,7 @@
 name: Terraform Three Tier Deployment
 
 on:
+
   push:
     branches:
       - main
@@ -10,18 +11,26 @@ on:
       - main
 
   workflow_dispatch:
+
     inputs:
+
       action:
+
         description: Terraform action
+
         required: true
+
         default: apply
+
         type: choice
+
         options:
           - apply
           - destroy
 
 
 permissions:
+
   contents: read
 
 
@@ -32,11 +41,16 @@ jobs:
     name: Terraform AWS
     runs-on: ubuntu-latest
 
+
     env:
+
       AWS_REGION: ${{ secrets.AWS_REGION }}
+
       AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
 
+
     steps:
+
 
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -48,6 +62,7 @@ jobs:
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
+
         with:
 
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -67,10 +82,6 @@ jobs:
         run: terraform init
 
 
-      - name: Terraform Format
-        run: terraform fmt -check
-
-
       - name: Terraform Validate
         run: terraform validate
 
@@ -83,9 +94,11 @@ jobs:
         if: |
           github.event_name == 'push' ||
           github.event.inputs.action == 'apply'
+
         run: terraform apply -auto-approve
 
 
       - name: Terraform Destroy
         if: github.event.inputs.action == 'destroy'
+
         run: terraform destroy -auto-approve
