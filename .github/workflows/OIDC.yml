@@ -1,4 +1,4 @@
-name: Terraform 3 Tier Deployment
+name: Terraform Three Tier Deployment
 
 on:
   workflow_dispatch:
@@ -27,8 +27,8 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
-      - name: Configure AWS Credentials using OIDC
-        uses: aws-actions/configure-aws-credentials@v4
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ secrets.AWS_REGION }}
@@ -47,9 +47,9 @@ jobs:
         run: terraform plan
 
       - name: Terraform Apply
-        if: github.event.inputs.action == 'apply'
+        if: inputs.action == 'apply'
         run: terraform apply -auto-approve
 
       - name: Terraform Destroy
-        if: github.event.inputs.action == 'destroy'
+        if: inputs.action == 'destroy'
         run: terraform destroy -auto-approve
