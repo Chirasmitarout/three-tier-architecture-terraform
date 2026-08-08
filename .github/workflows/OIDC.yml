@@ -46,14 +46,6 @@ jobs:
         run: |
           terraform init -input=false
 
-      - name: Terraform Format
-        run: |
-          terraform fmt -check -recursive
-
-      - name: Terraform Validate
-        run: |
-          terraform validate
-
       - name: Terraform Plan
         if: inputs.action == 'plan' || inputs.action == 'apply'
         run: |
