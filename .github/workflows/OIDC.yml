@@ -8,12 +8,13 @@ on:
         required: true
         type: choice
         options:
+          - plan
           - apply
           - destroy
 
 permissions:
-  contents: read
   id-token: write
+  contents: read
 
 jobs:
   terraform:
@@ -21,35 +22,50 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+
+      # 1. Checkout Terraform code
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      # 2. Setup Terraform
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
+      # 3. Configure AWS using OIDC
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v6
+        uses: aws-actions/configure-aws-credentials@v6.2.3
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ secrets.AWS_REGION }}
 
+      # 4. Verify AWS account
       - name: Verify AWS Identity
         run: |
+          echo "AWS Region: ${{ secrets.AWS_REGION }}"
           aws sts get-caller-identity
 
+      # 5. Terraform Init
       - name: Terraform Init
         run: terraform init
 
+      # 6. Terraform Format Check
+      - name: Terraform Format Check
+        run: terraform fmt -check
+
+      # 7. Terraform Validate
       - name: Terraform Validate
         run: terraform validate
 
+      # 8. Terraform Plan
       - name: Terraform Plan
         run: terraform plan
 
+      # 9. Terraform Apply
       - name: Terraform Apply
         if: inputs.action == 'apply'
         run: terraform apply -auto-approve
 
+      # 10. Terraform Destroy
       - name: Terraform Destroy
         if: inputs.action == 'destroy'
         run: terraform destroy -auto-approve
