@@ -13,8 +13,8 @@ on:
           - destroy
 
 permissions:
-  id-token: write
   contents: read
+  id-token: write
 
 jobs:
   terraform:
@@ -23,45 +23,87 @@ jobs:
 
     steps:
 
-      # 1. Checkout Terraform code
+      # --------------------------------------------------
+      # 1. Checkout repository
+      # --------------------------------------------------
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      # --------------------------------------------------
       # 2. Setup Terraform
+      # --------------------------------------------------
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
-      # 3. Configure AWS using OIDC
+      # --------------------------------------------------
+      # 3. Configure AWS using GitHub OIDC
+      # --------------------------------------------------
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v6.2.3
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      # 4. Verify AWS account
+      # --------------------------------------------------
+      # 4. Verify AWS authentication
+      # --------------------------------------------------
       - name: Verify AWS Identity
         run: |
           echo "AWS Region: ${{ secrets.AWS_REGION }}"
           aws sts get-caller-identity
 
-      # 5. Terraform Init
+      # --------------------------------------------------
+      # 5. Check Terraform version
+      # --------------------------------------------------
+      - name: Terraform Version
+        run: terraform version
+
+      # --------------------------------------------------
+      # 7. Terraform Init
+      # --------------------------------------------------
       - name: Terraform Init
         run: terraform init
 
-      # 7. Terraform Validate
+      # --------------------------------------------------
+      # 8. Terraform Validate
+      # --------------------------------------------------
       - name: Terraform Validate
         run: terraform validate
 
-      # 8. Terraform Plan
-      - name: Terraform Plan
-        run: terraform plan
+      # --------------------------------------------------
+      # 9. Show Terraform Providers
+      # --------------------------------------------------
+      - name: Terraform Providers
+        run: terraform providers
 
-      # 9. Terraform Apply
+      # --------------------------------------------------
+      # 10. Terraform Plan
+      # --------------------------------------------------
+      - name: Terraform Plan
+        run: |
+          terraform plan \
+            -input=false \
+            -no-color \
+            -out=tfplan
+
+      # --------------------------------------------------
+      # 11. Terraform Apply
+      # --------------------------------------------------
       - name: Terraform Apply
         if: inputs.action == 'apply'
-        run: terraform apply -auto-approve
+        run: |
+          terraform apply \
+            -input=false \
+            -auto-approve \
+            tfplan
 
-      # 10. Terraform Destroy
+      # --------------------------------------------------
+      # 12. Terraform Destroy
+      # --------------------------------------------------
       - name: Terraform Destroy
         if: inputs.action == 'destroy'
-        run: terraform destroy -auto-approve
+        run: |
+          terraform destroy \
+            -input=false \
+            -auto-approve \
+            -no-color
