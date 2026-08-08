@@ -8,7 +8,6 @@ on:
         required: true
         type: choice
         options:
-          - plan
           - apply
           - destroy
 
@@ -22,101 +21,180 @@ jobs:
   # TERRAFORM PLAN
   # ============================================================
   terraform-plan:
+
     name: Terraform Plan
+
     runs-on: ubuntu-latest
 
     steps:
 
+      # ----------------------------------------------------------
+      # Checkout
+      # ----------------------------------------------------------
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      # ----------------------------------------------------------
+      # Setup Terraform
+      # ----------------------------------------------------------
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
-      # AWS OIDC
+      # ----------------------------------------------------------
+      # AWS OIDC Authentication
+      # ----------------------------------------------------------
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v6.2.3
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ secrets.AWS_REGION }}
 
+      # ----------------------------------------------------------
+      # Verify AWS
+      # ----------------------------------------------------------
       - name: Verify AWS Identity
         run: |
-          echo "AWS Authentication Successful"
+          echo "======================================"
+          echo "AWS OIDC Authentication Successful"
+          echo "======================================"
+
           aws sts get-caller-identity
 
+      # ----------------------------------------------------------
+      # Terraform Version
+      # ----------------------------------------------------------
       - name: Terraform Version
-        run: terraform version
+        run: |
+          terraform version
 
+      # ----------------------------------------------------------
+      # Terraform Init
+      # ----------------------------------------------------------
       - name: Terraform Init
         run: |
+          echo "======================================"
+          echo "Terraform Init"
+          echo "======================================"
+
           terraform init -input=false
 
+      # ----------------------------------------------------------
+      # Terraform Format
+      # ----------------------------------------------------------
+      - name: Terraform Format Check
+        run: |
+          terraform fmt -check -recursive
+
+      # ----------------------------------------------------------
+      # Terraform Validate
+      # ----------------------------------------------------------
       - name: Terraform Validate
         run: |
+          echo "======================================"
+          echo "Terraform Validate"
+          echo "======================================"
+
           terraform validate
 
+      # ----------------------------------------------------------
+      # Terraform Plan
+      # ----------------------------------------------------------
       - name: Terraform Plan
         run: |
-          echo "========== TERRAFORM PLAN =========="
+          echo "======================================"
+          echo "Terraform Plan"
+          echo "======================================"
+
           terraform plan \
             -input=false \
             -no-color \
             -out=tfplan
 
-      # Upload plan so the next job can use it
+      # ----------------------------------------------------------
+      # Save Terraform Plan
+      # ----------------------------------------------------------
       - name: Upload Terraform Plan
-        if: inputs.action == 'apply'
         uses: actions/upload-artifact@v4
         with:
-          name: terraform-plan
+          name: terraform-plan-${{ github.run_id }}
           path: tfplan
+          retention-days: 1
 
 
   # ============================================================
-  # TERRAFORM APPLY
+  # APPLY
   # ============================================================
   terraform-apply:
+
     name: Terraform Apply
+
     needs: terraform-plan
 
-    # Only run when user selected APPLY
     if: inputs.action == 'apply'
 
     runs-on: ubuntu-latest
 
-    # GitHub will STOP here and ask for approval
     environment:
       name: terraform-apply
 
     steps:
 
+      # ----------------------------------------------------------
+      # Checkout
+      # ----------------------------------------------------------
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      # ----------------------------------------------------------
+      # Setup Terraform
+      # ----------------------------------------------------------
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
+      # ----------------------------------------------------------
       # AWS OIDC
+      # ----------------------------------------------------------
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v6.2.3
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ secrets.AWS_REGION }}
 
+      # ----------------------------------------------------------
+      # Verify AWS
+      # ----------------------------------------------------------
+      - name: Verify AWS Identity
+        run: |
+          echo "======================================"
+          echo "AWS Identity"
+          echo "======================================"
+
+          aws sts get-caller-identity
+
+      # ----------------------------------------------------------
+      # Terraform Init
+      # ----------------------------------------------------------
       - name: Terraform Init
         run: |
           terraform init -input=false
 
-      # Download plan created by previous job
+      # ----------------------------------------------------------
+      # Download Terraform Plan
+      # ----------------------------------------------------------
       - name: Download Terraform Plan
         uses: actions/download-artifact@v4
         with:
-          name: terraform-plan
+          name: terraform-plan-${{ github.run_id }}
 
+      # ----------------------------------------------------------
+      # Terraform Apply
+      # ----------------------------------------------------------
       - name: Terraform Apply
         run: |
-          echo "========== TERRAFORM APPLY =========="
+          echo "======================================"
+          echo "Terraform Apply"
+          echo "======================================"
+
           terraform apply \
             -input=false \
             -auto-approve \
@@ -125,47 +203,71 @@ jobs:
 
 
   # ============================================================
-  # TERRAFORM DESTROY
+  # DESTROY
   # ============================================================
   terraform-destroy:
+
     name: Terraform Destroy
+
     needs: terraform-plan
 
-    # Only run when user selected DESTROY
     if: inputs.action == 'destroy'
 
     runs-on: ubuntu-latest
 
-    # Separate approval for DESTROY
     environment:
       name: terraform-destroy
 
     steps:
 
+      # ----------------------------------------------------------
+      # Checkout
+      # ----------------------------------------------------------
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      # ----------------------------------------------------------
+      # Setup Terraform
+      # ----------------------------------------------------------
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
+      # ----------------------------------------------------------
       # AWS OIDC
+      # ----------------------------------------------------------
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v6.2.3
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ secrets.AWS_REGION }}
 
+      # ----------------------------------------------------------
+      # Verify AWS
+      # ----------------------------------------------------------
       - name: Verify AWS Identity
         run: |
+          echo "======================================"
+          echo "AWS Identity"
+          echo "======================================"
+
           aws sts get-caller-identity
 
+      # ----------------------------------------------------------
+      # Terraform Init
+      # ----------------------------------------------------------
       - name: Terraform Init
         run: |
           terraform init -input=false
 
+      # ----------------------------------------------------------
+      # Terraform Destroy
+      # ----------------------------------------------------------
       - name: Terraform Destroy
         run: |
-          echo "========== TERRAFORM DESTROY =========="
+          echo "======================================"
+          echo "WARNING: TERRAFORM DESTROY"
+          echo "======================================"
+
           terraform destroy \
             -input=false \
             -auto-approve \
