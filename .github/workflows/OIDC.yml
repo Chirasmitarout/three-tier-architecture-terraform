@@ -1,4 +1,4 @@
-name: Terraform Three Tier Deployment though OIDC
+name: Terraform Three Tier Deployment through OIDC
 
 on:
   workflow_dispatch:
@@ -17,8 +17,12 @@ permissions:
   id-token: write
 
 jobs:
-  terraform:
-    name: Terraform AWS
+
+  # ============================================================
+  # TERRAFORM PLAN
+  # ============================================================
+  terraform-plan:
+    name: Terraform Plan
     runs-on: ubuntu-latest
 
     steps:
@@ -29,6 +33,122 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
+      # AWS OIDC
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v6.2.3
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Verify AWS Identity
+        run: |
+          echo "AWS Authentication Successful"
+          aws sts get-caller-identity
+
+      - name: Terraform Version
+        run: terraform version
+
+      - name: Terraform Init
+        run: |
+          terraform init -input=false
+
+      - name: Terraform Validate
+        run: |
+          terraform validate
+
+      - name: Terraform Plan
+        run: |
+          echo "========== TERRAFORM PLAN =========="
+          terraform plan \
+            -input=false \
+            -no-color \
+            -out=tfplan
+
+      # Upload plan so the next job can use it
+      - name: Upload Terraform Plan
+        if: inputs.action == 'apply'
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-plan
+          path: tfplan
+
+
+  # ============================================================
+  # TERRAFORM APPLY
+  # ============================================================
+  terraform-apply:
+    name: Terraform Apply
+    needs: terraform-plan
+
+    # Only run when user selected APPLY
+    if: inputs.action == 'apply'
+
+    runs-on: ubuntu-latest
+
+    # GitHub will STOP here and ask for approval
+    environment:
+      name: terraform-apply
+
+    steps:
+
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      # AWS OIDC
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v6.2.3
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Terraform Init
+        run: |
+          terraform init -input=false
+
+      # Download plan created by previous job
+      - name: Download Terraform Plan
+        uses: actions/download-artifact@v4
+        with:
+          name: terraform-plan
+
+      - name: Terraform Apply
+        run: |
+          echo "========== TERRAFORM APPLY =========="
+          terraform apply \
+            -input=false \
+            -auto-approve \
+            -no-color \
+            tfplan
+
+
+  # ============================================================
+  # TERRAFORM DESTROY
+  # ============================================================
+  terraform-destroy:
+    name: Terraform Destroy
+    needs: terraform-plan
+
+    # Only run when user selected DESTROY
+    if: inputs.action == 'destroy'
+
+    runs-on: ubuntu-latest
+
+    # Separate approval for DESTROY
+    environment:
+      name: terraform-destroy
+
+    steps:
+
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      # AWS OIDC
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v6.2.3
         with:
@@ -39,34 +159,11 @@ jobs:
         run: |
           aws sts get-caller-identity
 
-      - name: Terraform Version
-        run: terraform version
-
       - name: Terraform Init
         run: |
           terraform init -input=false
 
-      - name: Terraform Plan
-        if: inputs.action == 'plan' || inputs.action == 'apply'
-        run: |
-          echo "========== TERRAFORM PLAN =========="
-          terraform plan \
-            -input=false \
-            -no-color \
-            -out=tfplan
-
-      - name: Terraform Apply
-        if: inputs.action == 'apply'
-        run: |
-          echo "========== TERRAFORM APPLY =========="
-          terraform apply \
-            -input=false \
-            -auto-approve \
-            -no-color \
-            tfplan
-
       - name: Terraform Destroy
-        if: inputs.action == 'destroy'
         run: |
           echo "========== TERRAFORM DESTROY =========="
           terraform destroy \
