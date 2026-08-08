@@ -23,86 +23,60 @@ jobs:
 
     steps:
 
-      # --------------------------------------------------
-      # 1. Checkout repository
-      # --------------------------------------------------
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # --------------------------------------------------
-      # 2. Setup Terraform
-      # --------------------------------------------------
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
-      # --------------------------------------------------
-      # 3. Configure AWS using GitHub OIDC
-      # --------------------------------------------------
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v6.2.3
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      # --------------------------------------------------
-      # 4. Verify AWS authentication
-      # --------------------------------------------------
       - name: Verify AWS Identity
         run: |
-          echo "AWS Region: ${{ secrets.AWS_REGION }}"
           aws sts get-caller-identity
 
-      # --------------------------------------------------
-      # 5. Check Terraform version
-      # --------------------------------------------------
       - name: Terraform Version
         run: terraform version
 
-      # --------------------------------------------------
-      # 7. Terraform Init
-      # --------------------------------------------------
       - name: Terraform Init
-        run: terraform init
-
-      # --------------------------------------------------
-      # 8. Terraform Validate
-      # --------------------------------------------------
-      - name: Terraform Validate
-        run: terraform validate
-
-      # --------------------------------------------------
-      # 9. Show Terraform Providers
-      # --------------------------------------------------
-      - name: Terraform Providers
-        run: terraform providers
-
-      # --------------------------------------------------
-      # 10. Terraform Plan
-      # --------------------------------------------------
-      - name: Terraform Plan
         run: |
+          terraform init -input=false
+
+      - name: Terraform Format
+        run: |
+          terraform fmt -check -recursive
+
+      - name: Terraform Validate
+        run: |
+          terraform validate
+
+      - name: Terraform Plan
+        if: inputs.action == 'plan' || inputs.action == 'apply'
+        run: |
+          echo "========== TERRAFORM PLAN =========="
           terraform plan \
             -input=false \
             -no-color \
             -out=tfplan
 
-      # --------------------------------------------------
-      # 11. Terraform Apply
-      # --------------------------------------------------
       - name: Terraform Apply
         if: inputs.action == 'apply'
         run: |
+          echo "========== TERRAFORM APPLY =========="
           terraform apply \
             -input=false \
             -auto-approve \
+            -no-color \
             tfplan
 
-      # --------------------------------------------------
-      # 12. Terraform Destroy
-      # --------------------------------------------------
       - name: Terraform Destroy
         if: inputs.action == 'destroy'
         run: |
+          echo "========== TERRAFORM DESTROY =========="
           terraform destroy \
             -input=false \
             -auto-approve \
