@@ -1,4 +1,4 @@
-name: Terraform Three Tier Deployment
+name: Terraform 3 Tier Deployment
 
 on:
   workflow_dispatch:
