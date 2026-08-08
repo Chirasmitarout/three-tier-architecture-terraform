@@ -1,4 +1,4 @@
-name: Terraform Three Tier Deployment
+name: Terraform Three Tier Deployment though OIDC
 
 on:
   workflow_dispatch:
